@@ -17,7 +17,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
+	// "strconv"
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
@@ -59,7 +59,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 			// Handle only on text message
 			case *linebot.TextMessage:
 				// GetMessageQuota: Get how many remain free tier push message quota you still have this month. (maximum 500)
-				quota, err := bot.GetMessageQuota().Do()
+				// quota, err := bot.GetMessageQuota().Do()
 				if err != nil {
 					log.Println("Quota err:", err)
 				}
