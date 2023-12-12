@@ -27,7 +27,7 @@ var bot *linebot.Client
 func main() {
 	err := godotenv.Load() // Load environment variable from .env file
 	if err != nil{
-		fmt.Print(err)
+		log.Print(err)
 	}
 
 	ChannelAccessToken := os.Getenv("CHANNEL_ACCESS_TOKEN")
