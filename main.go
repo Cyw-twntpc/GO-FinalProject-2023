@@ -18,20 +18,27 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-
+	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
 
 var bot *linebot.Client
 
 func main() {
-	var err error
-	bot, err = linebot.New(os.Getenv("ChannelSecret"), os.Getenv("ChannelAccessToken"))
-	log.Println("Bot:", bot, " err:", err)
+	err := godotenv.Load() // Load environment variable from .env file
+	if err != nil{
+		fmt.Print(err)
+	}
+
+	ChannelAccessToken := os.Getenv("CHANNEL_ACCESS_TOKEN")
+	ChannelSecret := os.Getenv("CHANNEL_SECRET")
+
+	bot, err = linebot.New(ChannelSecret, ChannelAccessToken)
+	if err != nil{
+		log.Print("Bot Successfully Bulid!")
+	}
 	http.HandleFunc("/callback", callbackHandler)
-	port := os.Getenv("PORT")
-	addr := fmt.Sprintf(":%s", port)
-	http.ListenAndServe(addr, nil)
+	http.ListenAndServe(":8000", nil)
 }
 
 func callbackHandler(w http.ResponseWriter, r *http.Request) {

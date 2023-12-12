@@ -1,6 +1,8 @@
-module github.com/kkdai/LineBotTemplate
+module GO-FinalProject-2023
 
-// +heroku goVersion go1.17
-go 1.17
+go 1.21.1
 
-require github.com/line/line-bot-sdk-go/v7 v7.19.0
+require (
+	github.com/joho/godotenv v1.5.1
+	github.com/line/line-bot-sdk-go/v7 v7.21.0
+)
