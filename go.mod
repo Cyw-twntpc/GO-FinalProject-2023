@@ -1,6 +1,6 @@
 module GO-FinalProject-2023
 
-go 1.21.1
+go 1.19
 
 require (
 	github.com/joho/godotenv v1.5.1
