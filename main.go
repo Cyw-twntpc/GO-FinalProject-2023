@@ -17,7 +17,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	// "strconv"
+	"strings"
+	"strconv"
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
@@ -40,7 +41,68 @@ func main() {
 	http.HandleFunc("/callback", callbackHandler)
 	http.ListenAndServe(":64503", nil)
 }
+func calculate(input string) string{
+	operators := []string{"+", "-", "*", "/"}
 
+	// 查找輸入字串中的運算符
+	var operator string
+	for _, op := range operators {
+		if strings.Contains(input, op) {
+			operator = op
+			break
+		}
+	}
+
+	// 如果未找到運算符，輸出錯誤信息
+	if operator == "" {
+		output := "無效的輸入"
+		return output
+	}
+
+	// 使用 strings.Split 分割輸入字串，獲得數字和運算符
+	parts := strings.Split(input, operator)
+	if len(parts) != 2 {
+		output := "無效的輸入"
+		return output
+	}
+
+	// 解析數字
+	num1, err := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+	if err != nil {
+		output := fmt.Sprintf("無效的數字: %s", parts[0])
+		return output
+	}
+
+	num2, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+	if err != nil {
+		output := fmt.Sprintf("無效的數字: %s", parts[1])
+		return output
+	}
+
+	// 根據運算符執行相應的操作
+	var result float64
+	switch operator {
+	case "+":
+		result = num1 + num2
+	case "-":
+		result = num1 - num2
+	case "*":
+		result = num1 * num2
+	case "/":
+		if num2 == 0 {
+			output := "除數不能為零"
+			return output
+		}
+		result = num1 / num2
+	default:
+		output := fmt.Sprintf("不支持的運算符: %s", operator)
+		return output
+	}
+
+	// 輸出結果
+	output := fmt.Sprintf("結果: %v %s %v = %v", num1, operator, num2, result)
+	return output
+}
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	events, err := bot.ParseRequest(r)
 
@@ -65,10 +127,28 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				// message.ID: Msg unique ID
 				// message.Text: Msg text
-				if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(message.Text)).Do(); err != nil {
-					log.Print(err)
+				// if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(message.Text)).Do(); err != nil {
+				// 	log.Print(err)
+				// }
+				var result string
+				if message.Text == "功能表" {
+					result = "1. 計算\n2. 驗證信用卡\n3. 查詢推文\n4. 查詢影片資訊"
+					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
+						log.Print(err)
+					}
 				}
-
+				feature := strings.Split(message.Text, " ")
+				fmt.Printf("切割後的結果: %v\n", feature[0])
+				if feature[0] == "計算" {
+					
+					result = calculate(feature[1])			
+					
+					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
+						log.Print(err)
+					}				
+				}
+				// length := len(message.Text)
+				// fmt.Printf("%s %d",message.Text,length)
 			// Handle only on Sticker message
 			case *linebot.StickerMessage:
 				var kw string
