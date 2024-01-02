@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"encoding/json"
+	"math/rand"
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 	"time"
@@ -256,6 +257,17 @@ func formatNumber(number string) string {
 	}
 	return result
 }
+func drawLottery(members []string) (string, error) {
+	// 檢查是否有成員可供抽籤
+	if len(members) == 0 {
+		return "", fmt.Errorf("沒有可供抽籤的成員")
+	}
+
+	winnerIndex := rand.Intn(len(members))
+	winner := members[winnerIndex]
+
+	return winner, nil
+}
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	events, err := bot.ParseRequest(r)
 
@@ -285,7 +297,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				// }
 				var result string
 				if message.Text == "功能表" {
-					result = "1. 計算\n2. 驗證信用卡\n3. 天氣查詢\n4. 查詢影片資訊"
+					result = "1. 計算\n2. 驗證信用卡\n3. 抽籤\n4. 查詢影片資訊"
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}
@@ -307,6 +319,21 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 				}else if feature[0] == "查詢影片資訊"{
 					result = check_yt_imformation(feature[1])
+					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
+						log.Print(err)
+					}	
+
+				}else if feature[0] == "抽籤"{
+					groupMembers := []string{"成員1", "成員2", "成員3", "成員4", "成員5"}
+
+					// 執行群組抽籤
+					winner, err := drawLottery(groupMembers)
+					if err != nil {
+						fmt.Println("抽籤時發生錯誤:", err)
+						return
+					}
+				
+					result = fmt.Sprintf("抽中的成員是：%s\n", winner)
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}	
