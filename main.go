@@ -17,10 +17,13 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"strconv"
+	"strings"
+	"encoding/json"
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
+	"time"
+	"net/url"
 )
 
 var bot *linebot.Client
@@ -103,6 +106,156 @@ func calculate(input string) string{
 	output := fmt.Sprintf("結果: %v %s %v = %v", num1, operator, num2, result)
 	return output
 }
+func luhnAlgorithm(cardNumber string) bool {
+    // this function implements the luhn algorithm
+    // it takes as argument a cardnumber of type string
+    // and it returns a boolean (true or false) if the
+    // card number is valid or not
+
+    // initialise a variable to keep track of the total sum of digits
+    total := 0
+    // Initialize a flag to track whether the current digit is the second digit from the right.
+    isSecondDigit := false
+
+    // iterate through the card number digits in reverse order
+    for i := len(cardNumber) - 1; i >= 0; i-- {
+        // conver the digit character to an integer
+        digit := int(cardNumber[i] - '0')
+
+        if isSecondDigit {
+            // double the digit for each second digit from the right
+            digit *= 2
+            if digit > 9 {
+                // If doubling the digit results in a two-digit number,
+                //subtract 9 to get the sum of digits.
+                digit -= 9
+            }
+        }
+
+        // Add the current digit to the total sum
+        total += digit
+
+        //Toggle the flag for the next iteration.
+        isSecondDigit = !isSecondDigit
+    }
+
+    // return whether the total sum is divisible by 10
+    // making it a valid luhn number
+    return total%10 == 0
+}
+func check_credit_card(input string) string {
+	result := luhnAlgorithm(input)
+	var output string
+
+	if result {
+		
+		output = "信用卡號正確"
+		fmt.Printf("%s",output)
+	} else{
+		output = "信用卡號錯誤 請重新輸入"
+		fmt.Printf("%s",output)
+	}
+	return output
+}
+type Output struct {
+    Title string
+    Id  string
+	ChannelTitle string
+	LikeCount string
+	ViewCount string
+	PublishedAt string
+	CommentCount string
+}
+
+
+func check_yt_imformation(youtubeURL string) string {
+	// TODO: Get API token from .env file
+	// TODO: Get video ID from URL query `v`
+	// TODO: Get video information from YouTube API
+	// TODO: Parse the JSON response and store the information into a struct
+	// TODO: Display the information in an HTML page through `template`
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	youtubeAPIKey := os.Getenv("YOUTUBE_API_KEY")	
+	baseURL := "https://www.googleapis.com/youtube/v3/videos"
+	parsedURL, _ := url.Parse(youtubeURL)
+	videoID := parsedURL.Query().Get("v")
+	if videoID == "" {
+		// http.ServeFile(w, r, "error.html")
+		return "error"
+	}	
+	url := fmt.Sprintf("%s?part=statistics,snippet&id=%s&key=%s", baseURL, videoID, youtubeAPIKey)
+	resp, err := http.Get(url)
+	if err != nil {
+		// http.ServeFile(w, r, "error.html")
+		return "error" 
+	}
+	var data map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&data)
+	if err != nil {
+		// http.ServeFile(w, r, "error.html")
+		return "error"
+	}
+
+	items, ok := data["items"].([]interface{})
+	if !ok || len(items) == 0 {
+		// http.ServeFile(w, r, "error.html")
+		return "error"
+	}
+	statistics, ok := items[0].(map[string]interface{})["statistics"].(map[string]interface{})
+	if !ok {
+		// http.ServeFile(w, r, "error.html")
+		return "error"
+	}
+	views := formatNumber(statistics["viewCount"].(string))
+	likes := formatNumber(statistics["likeCount"].(string))
+	comments := formatNumber(statistics["commentCount"].(string))
+	title := items[0].(map[string]interface{})["snippet"].(map[string]interface{})["title"].(string)
+	channelTitle := items[0].(map[string]interface{})["snippet"].(map[string]interface{})["channelTitle"].(string)
+	publishedAt := items[0].(map[string]interface{})["snippet"].(map[string]interface{})["publishedAt"].(string)
+	parsedTime, err := time.Parse(time.RFC3339, publishedAt)
+	if err != nil {
+		// http.ServeFile(w, r, "error.html")
+		return "error"
+	}
+	formattedDate := parsedTime.Format("2006年01月02日")
+	var output = Output{
+		Title :title,
+		Id :videoID,
+		ChannelTitle :channelTitle,
+		LikeCount :likes,
+		ViewCount :views,
+		PublishedAt :formattedDate,
+		CommentCount :comments,
+	}
+	outputString := fmt.Sprintf("Information:\n"+
+		"Title: %s\n"+
+		"Channel Title: %s\n"+
+		"Like Count: %s\n"+
+		"View Count: %s\n"+
+		"Published At: %s\n"+
+		"Comment Count: %s\n"+
+		"------------------------------",
+		output.Title, output.ChannelTitle, output.LikeCount, output.ViewCount, output.PublishedAt, output.CommentCount)
+
+	// 印出結果
+	fmt.Println(outputString)
+	return outputString
+}
+func formatNumber(number string) string {
+	// Format the number with commas every 3 digits
+	parts := strings.Split(number, "")
+	result := ""
+	for i := len(parts) - 1; i >= 0; i-- {
+		result = parts[i] + result
+		if (len(parts)-i)%3 == 0 && i != 0 {
+			result = "," + result
+		}
+	}
+	return result
+}
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	events, err := bot.ParseRequest(r)
 
@@ -132,7 +285,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				// }
 				var result string
 				if message.Text == "功能表" {
-					result = "1. 計算\n2. 驗證信用卡\n3. 查詢推文\n4. 查詢影片資訊"
+					result = "1. 計算\n2. 驗證信用卡\n3. 天氣查詢\n4. 查詢影片資訊"
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}
@@ -146,6 +299,18 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}				
+				} else if feature[0] == "驗證信用卡"{
+					result = check_credit_card(feature[1])
+					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
+						log.Print(err)
+					}	
+
+				}else if feature[0] == "查詢影片資訊"{
+					result = check_yt_imformation(feature[1])
+					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
+						log.Print(err)
+					}	
+
 				}
 				// length := len(message.Text)
 				// fmt.Printf("%s %d",message.Text,length)
