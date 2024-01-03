@@ -304,26 +304,26 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				feature := strings.Split(message.Text, " ")
 				fmt.Printf("切割後的結果: %v\n", feature[0])
-				if feature[0] == "計算" {
+				if feature[0] == "!計算" {
 					
 					result = calculate(feature[1])			
 					
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}				
-				} else if feature[0] == "驗證信用卡"{
+				} else if feature[0] == "!驗證信用卡"{
 					result = check_credit_card(feature[1])
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}	
 
-				}else if feature[0] == "查詢影片資訊"{
+				}else if feature[0] == "!查詢影片資訊"{
 					result = check_yt_imformation(feature[1])
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}	
 
-				}else if feature[0] == "抽籤"{
+				}else if feature[0] == "!抽籤"{
 					groupMembers := []string{"成員1", "成員2", "成員3", "成員4", "成員5"}
 
 					// 執行群組抽籤
