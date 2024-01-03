@@ -4,3 +4,4 @@
 
 1. CHANNEL_ACCESS_TOKEN,CHANNEL_SECRET from Line Developers
 2. YOUTUBE_API_KEY from YouTube Data API 
+3. NEWS_API from Newsapi

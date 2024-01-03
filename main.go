@@ -13,25 +13,28 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
-	"encoding/json"
-	"math/rand"
+	"time"
+
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
-	"time"
-	"net/url"
 )
 
 var bot *linebot.Client
 
 func main() {
 	err := godotenv.Load() // Load environment variable from .env file
-	if err != nil{
+	if err != nil {
 		log.Print(err)
 	}
 
@@ -39,13 +42,13 @@ func main() {
 	ChannelSecret := os.Getenv("CHANNEL_SECRET")
 
 	bot, err = linebot.New(ChannelSecret, ChannelAccessToken)
-	if err != nil{
+	if err != nil {
 		log.Print("Bot Successfully Bulid!")
 	}
 	http.HandleFunc("/callback", callbackHandler)
 	http.ListenAndServe(":64503", nil)
 }
-func calculate(input string) string{
+func calculate(input string) string {
 	operators := []string{"+", "-", "*", "/"}
 
 	// 查找輸入字串中的運算符
@@ -108,66 +111,66 @@ func calculate(input string) string{
 	return output
 }
 func luhnAlgorithm(cardNumber string) bool {
-    // this function implements the luhn algorithm
-    // it takes as argument a cardnumber of type string
-    // and it returns a boolean (true or false) if the
-    // card number is valid or not
+	// this function implements the luhn algorithm
+	// it takes as argument a cardnumber of type string
+	// and it returns a boolean (true or false) if the
+	// card number is valid or not
 
-    // initialise a variable to keep track of the total sum of digits
-    total := 0
-    // Initialize a flag to track whether the current digit is the second digit from the right.
-    isSecondDigit := false
+	// initialise a variable to keep track of the total sum of digits
+	total := 0
+	// Initialize a flag to track whether the current digit is the second digit from the right.
+	isSecondDigit := false
 
-    // iterate through the card number digits in reverse order
-    for i := len(cardNumber) - 1; i >= 0; i-- {
-        // conver the digit character to an integer
-        digit := int(cardNumber[i] - '0')
+	// iterate through the card number digits in reverse order
+	for i := len(cardNumber) - 1; i >= 0; i-- {
+		// conver the digit character to an integer
+		digit := int(cardNumber[i] - '0')
 
-        if isSecondDigit {
-            // double the digit for each second digit from the right
-            digit *= 2
-            if digit > 9 {
-                // If doubling the digit results in a two-digit number,
-                //subtract 9 to get the sum of digits.
-                digit -= 9
-            }
-        }
+		if isSecondDigit {
+			// double the digit for each second digit from the right
+			digit *= 2
+			if digit > 9 {
+				// If doubling the digit results in a two-digit number,
+				//subtract 9 to get the sum of digits.
+				digit -= 9
+			}
+		}
 
-        // Add the current digit to the total sum
-        total += digit
+		// Add the current digit to the total sum
+		total += digit
 
-        //Toggle the flag for the next iteration.
-        isSecondDigit = !isSecondDigit
-    }
+		//Toggle the flag for the next iteration.
+		isSecondDigit = !isSecondDigit
+	}
 
-    // return whether the total sum is divisible by 10
-    // making it a valid luhn number
-    return total%10 == 0
+	// return whether the total sum is divisible by 10
+	// making it a valid luhn number
+	return total%10 == 0
 }
 func check_credit_card(input string) string {
 	result := luhnAlgorithm(input)
 	var output string
 
 	if result {
-		
+
 		output = "信用卡號正確"
-		fmt.Printf("%s",output)
-	} else{
+		fmt.Printf("%s", output)
+	} else {
 		output = "信用卡號錯誤 請重新輸入"
-		fmt.Printf("%s",output)
+		fmt.Printf("%s", output)
 	}
 	return output
 }
+
 type Output struct {
-    Title string
-    Id  string
+	Title        string
+	Id           string
 	ChannelTitle string
-	LikeCount string
-	ViewCount string
-	PublishedAt string
+	LikeCount    string
+	ViewCount    string
+	PublishedAt  string
 	CommentCount string
 }
-
 
 func check_yt_imformation(youtubeURL string) string {
 	// TODO: Get API token from .env file
@@ -179,19 +182,19 @@ func check_yt_imformation(youtubeURL string) string {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-	youtubeAPIKey := os.Getenv("YOUTUBE_API_KEY")	
+	youtubeAPIKey := os.Getenv("YOUTUBE_API_KEY")
 	baseURL := "https://www.googleapis.com/youtube/v3/videos"
 	parsedURL, _ := url.Parse(youtubeURL)
 	videoID := parsedURL.Query().Get("v")
 	if videoID == "" {
 		// http.ServeFile(w, r, "error.html")
 		return "error"
-	}	
+	}
 	url := fmt.Sprintf("%s?part=statistics,snippet&id=%s&key=%s", baseURL, videoID, youtubeAPIKey)
 	resp, err := http.Get(url)
 	if err != nil {
 		// http.ServeFile(w, r, "error.html")
-		return "error" 
+		return "error"
 	}
 	var data map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&data)
@@ -223,13 +226,13 @@ func check_yt_imformation(youtubeURL string) string {
 	}
 	formattedDate := parsedTime.Format("2006年01月02日")
 	var output = Output{
-		Title :title,
-		Id :videoID,
-		ChannelTitle :channelTitle,
-		LikeCount :likes,
-		ViewCount :views,
-		PublishedAt :formattedDate,
-		CommentCount :comments,
+		Title:        title,
+		Id:           videoID,
+		ChannelTitle: channelTitle,
+		LikeCount:    likes,
+		ViewCount:    views,
+		PublishedAt:  formattedDate,
+		CommentCount: comments,
 	}
 	outputString := fmt.Sprintf("Information:\n"+
 		"Title: %s\n"+
@@ -268,6 +271,88 @@ func drawLottery(members []string) (string, error) {
 
 	return winner, nil
 }
+
+type ApiResponse struct {
+	Status       string `json:"status"`
+	TotalResults int    `json:"totalResults"`
+	Articles     []struct {
+		Source struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"source"`
+		Author string `json:"author"`
+		Title  string `json:"title"`
+		URL    string `json:"url"`
+	} `json:"articles"`
+}
+
+func extractNewsCommand(input string) (string, int) {
+	defaultQuery := ""
+	defaultPageSize := 5
+
+	re := regexp.MustCompile(`^!近期新聞(?:\((.*?)\))?(?:\[(\d+)\])?$`)
+	matches := re.FindStringSubmatch(input)
+	if len(matches) > 1 {
+		query := ""
+		pagesize := ""
+		q := false
+		p := false
+		for _, char := range input {
+			switch char {
+			case '(':
+				q = true
+				continue
+			case ')':
+				q = false
+				continue
+			case '[':
+				p = true
+				continue
+			case ']':
+				p = false
+				continue
+			}
+			if q {
+				query += string(char)
+			} else if p {
+				pagesize += string(char)
+			}
+		}
+		pageSize, err := strconv.Atoi(pagesize)
+		if err != nil {
+			return query, defaultPageSize
+		}
+		return query, pageSize
+	}
+	return defaultQuery, defaultPageSize
+}
+func getNews(query string, pageSize int) ApiResponse {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	baseURL := "https://newsapi.org/v2/top-headlines?country=tw"
+	apiKey := os.Getenv("NEWS_API")
+	url := fmt.Sprintf("%s&apiKey=%s&q=%s&pageSize=%d", baseURL, apiKey, query, pageSize)
+
+	response, err := http.Get(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer response.Body.Close()
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var apiResponse ApiResponse
+	if err := json.Unmarshal(body, &apiResponse); err != nil {
+		log.Fatal(err)
+	}
+
+	return apiResponse
+}
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	events, err := bot.ParseRequest(r)
 
@@ -297,7 +382,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				// }
 				var result string
 				if message.Text == "功能表" {
-					result = "1. 計算\n2. 驗證信用卡\n3. 抽籤\n4. 查詢影片資訊"
+					result = "1. !計算\n2. !驗證信用卡\n3. !抽籤\n4. !查詢影片資訊\n5. !近期新聞(關鍵字)[數量]"
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}
@@ -305,25 +390,25 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				feature := strings.Split(message.Text, " ")
 				fmt.Printf("切割後的結果: %v\n", feature[0])
 				if feature[0] == "!計算" {
-					
-					result = calculate(feature[1])			
-					
+
+					result = calculate(feature[1])
+
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
-					}				
-				} else if feature[0] == "!驗證信用卡"{
+					}
+				} else if feature[0] == "!驗證信用卡" {
 					result = check_credit_card(feature[1])
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
-					}	
+					}
 
-				}else if feature[0] == "!查詢影片資訊"{
+				} else if feature[0] == "!查詢影片資訊" {
 					result = check_yt_imformation(feature[1])
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
-					}	
+					}
 
-				}else if feature[0] == "!抽籤"{
+				} else if feature[0] == "!抽籤" {
 					groupMembers := []string{"成員1", "成員2", "成員3", "成員4", "成員5"}
 
 					// 執行群組抽籤
@@ -332,12 +417,27 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 						fmt.Println("抽籤時發生錯誤:", err)
 						return
 					}
-				
+
 					result = fmt.Sprintf("抽中的成員是：%s\n", winner)
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
-					}	
+					}
 
+				}
+				if strings.HasPrefix(message.Text, "!近期新聞") {
+					query, pageSize := extractNewsCommand(message.Text)
+					apiResponse := getNews(query, pageSize)
+					var responseMsg string
+					if len(apiResponse.Articles) == 0 {
+						responseMsg = "查無相關新聞。"
+					} else {
+						for i, article := range apiResponse.Articles {
+							responseMsg += fmt.Sprintf("%d. %s\n", i+1, article.Title)
+						}
+					}
+					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(responseMsg)).Do(); err != nil {
+						log.Print(err)
+					}
 				}
 				// length := len(message.Text)
 				// fmt.Printf("%s %d",message.Text,length)
