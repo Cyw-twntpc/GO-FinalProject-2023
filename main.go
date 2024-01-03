@@ -38,8 +38,6 @@ import (
 	_ "github.com/line/line-bot-sdk-go/v8/linebot/module_attach"
 	_ "github.com/line/line-bot-sdk-go/v8/linebot/shop"
 	_ "github.com/line/line-bot-sdk-go/v8/linebot/webhook"
-	"time"
-	"net/url"
 )
 
 var bot *linebot.Client
@@ -395,7 +393,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				// }
 				var result string
 				if message.Text == "!功能表" {
-					result = "1. 計算\n2. 驗證信用卡\n3. 抽籤\n4. 查詢影片資訊\n5. 登記\n6. 取消登記"
+					result = "1. 計算\n2. 驗證信用卡\n3. 抽籤\n4. 查詢影片資訊\n5. 登記\n6. 取消登記\n7. 近期新聞"
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}
@@ -415,7 +413,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
                     }
                 } else if message.Text == "!取消登記" {
 
-                    registeredIDs[event.Source.UserID] = false
+                    delete(registeredIDs, event.Source.UserID)
 
 					userProfile, err := bot.GetProfile(event.Source.UserID).Do()
 					if err != nil {
@@ -457,18 +455,25 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
                     }
 
 					// 執行群組抽籤
+					haveWinner := true
 					winner, err := drawLottery(members)
 					if err != nil {
 						fmt.Println("抽籤時發生錯誤:", err)
-						return
+						haveWinner = false
+						// return
 					}
-					userProfile, err := bot.GetProfile(winner).Do()
-					if err != nil {
-						log.Print(err)
-						return
-					}				
-                	winnerName := userProfile.DisplayName
-					result = fmt.Sprintf("抽中的成員是：%s\n", winnerName)
+					if haveWinner {
+						userProfile, err := bot.GetProfile(winner).Do()
+						if err != nil {
+							log.Print(err)
+							return
+						}				
+						winnerName := userProfile.DisplayName
+						result = fmt.Sprintf("抽中的成員是：%s\n", winnerName)
+					} else {
+						result = "沒有可供抽籤的成員"
+					}
+					
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}
