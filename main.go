@@ -27,10 +27,23 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/line/line-bot-sdk-go/v7/linebot"
+
+	"github.com/line/line-bot-sdk-go/v8/linebot"
+	_ "github.com/line/line-bot-sdk-go/v8/linebot/channel_access_token"
+	_ "github.com/line/line-bot-sdk-go/v8/linebot/insight"
+	_ "github.com/line/line-bot-sdk-go/v8/linebot/liff"
+	_ "github.com/line/line-bot-sdk-go/v8/linebot/manage_audience"
+	_ "github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
+	_ "github.com/line/line-bot-sdk-go/v8/linebot/module"
+	_ "github.com/line/line-bot-sdk-go/v8/linebot/module_attach"
+	_ "github.com/line/line-bot-sdk-go/v8/linebot/shop"
+	_ "github.com/line/line-bot-sdk-go/v8/linebot/webhook"
+	"time"
+	"net/url"
 )
 
 var bot *linebot.Client
+var registeredIDs map[string]bool = make(map[string]bool)
 
 func main() {
 	err := godotenv.Load() // Load environment variable from .env file
@@ -381,12 +394,40 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 				// 	log.Print(err)
 				// }
 				var result string
-				if message.Text == "功能表" {
-					result = "1. !計算\n2. !驗證信用卡\n3. !抽籤\n4. !查詢影片資訊\n5. !近期新聞(關鍵字)[數量]"
+				if message.Text == "!功能表" {
+					result = "1. 計算\n2. 驗證信用卡\n3. 抽籤\n4. 查詢影片資訊\n5. 登記\n6. 取消登記"
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}
-				}
+				} else if message.Text == "!登記" {
+
+                    registeredIDs[event.Source.UserID] = true
+
+					userProfile, err := bot.GetProfile(event.Source.UserID).Do()
+					if err != nil {
+						log.Print(err)
+						return
+					}				
+                	userName := userProfile.DisplayName
+					result := fmt.Sprintf("%s 成功登記", userName)
+                    if _, err := bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
+                        log.Print(err)
+                    }
+                } else if message.Text == "!取消登記" {
+
+                    registeredIDs[event.Source.UserID] = false
+
+					userProfile, err := bot.GetProfile(event.Source.UserID).Do()
+					if err != nil {
+						log.Print(err)
+						return
+					}				
+                	userName := userProfile.DisplayName
+					result := fmt.Sprintf("%s 取消登記", userName)
+                    if _, err := bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
+                        log.Print(err)
+                    }
+                }
 				feature := strings.Split(message.Text, " ")
 				fmt.Printf("切割後的結果: %v\n", feature[0])
 				if feature[0] == "!計算" {
@@ -408,17 +449,26 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 						log.Print(err)
 					}
 
-				} else if feature[0] == "!抽籤" {
-					groupMembers := []string{"成員1", "成員2", "成員3", "成員4", "成員5"}
+
+				}else if feature[0] == "!抽籤"{
+					members := make([]string, 0, len(registeredIDs))
+                    for id := range registeredIDs {
+                        members = append(members, id)
+                    }
 
 					// 執行群組抽籤
-					winner, err := drawLottery(groupMembers)
+					winner, err := drawLottery(members)
 					if err != nil {
 						fmt.Println("抽籤時發生錯誤:", err)
 						return
 					}
-
-					result = fmt.Sprintf("抽中的成員是：%s\n", winner)
+					userProfile, err := bot.GetProfile(winner).Do()
+					if err != nil {
+						log.Print(err)
+						return
+					}				
+                	winnerName := userProfile.DisplayName
+					result = fmt.Sprintf("抽中的成員是：%s\n", winnerName)
 					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(result)).Do(); err != nil {
 						log.Print(err)
 					}
